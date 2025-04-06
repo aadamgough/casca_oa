@@ -48,14 +48,14 @@ instance/
 *.swp
 *.swo
 
-# MacOS specific
+# MacOS
 .DS_Store
 
-# Windows specific
+# Windows
 Thumbs.db
 ehthumbs.db
 
-# Docker related files
+# Docker related files (tbd if needed)
 docker-compose.override.yml
 docker-compose.local.yml
 
@@ -73,3 +73,7 @@ tsconfig.tsbuildinfo
 
 # ShadCN component build output
 /.shadcn/
+
+# env
+back-end/.env
+front-end/.env

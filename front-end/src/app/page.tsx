@@ -4,12 +4,80 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/file_upload"
 import Link from "next/link";
+import { useState } from "react";
 
 export default function Home() {
-  const handleFileSelect = (file: File | null) => {
-    // TODO: Implement adding logic to send file to backend
-    console.log('Selected file:', file);
+  const [isUploaded, setIsUploaded] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [uploadedFilename, setUploadedFilename] = useState<string>('');
+
+
+  const handleFileSelect = async (file: File | null) => {
+    setIsUploaded(false);
+    setShowSuccess(false);
+    if (!file) {
+      console.error('No file selected');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.includes('pdf')) {
+      console.error('Please upload a PDF file');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:8000/api/v1/analyze/upload', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Upload successful:', data);
+      setIsUploaded(true);
+      setShowSuccess(true);
+      setUploadedFilename(data.filename);
+      
+      // TODO: Add success notification or redirect to results page
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setIsUploaded(false);
+      setShowSuccess(false);
+    }
   }
+
+  const handleAnalyze = async () => { //TODO: Probably abstract this log in separate file
+    if (!uploadedFilename) return;
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/analyze/analyze/${uploadedFilename}`, {
+        method: 'POST',
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      console.log('Analysis results:', data);
+      // TODO: Handle the analysis results (show them in UI, etc.)
+      
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+    }
+  }
+
   return (
     <div className="min-h-screen p-8 flex flex-col">
       {/* Header */}
@@ -27,7 +95,7 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto text-center gap-8">
         <h2 className="text-5xl sm:text-6xl font-bold tracking-tight">
-          Upload, analyze, approve. 
+          Bank loans made simple. 
         </h2>
         
         <p className="text-lg text-muted-foreground max-w-2xl">
@@ -35,7 +103,23 @@ export default function Home() {
           in seconds. Make smarter lending decisions with confidence.
         </p>
 
-        <FileUpload onFileSelect={handleFileSelect} />
+        <div className="flex flex-col items-center gap-4">
+          <FileUpload onFileSelect={handleFileSelect} />
+          
+          {showSuccess && (
+            <p className="text-green-600 font-medium mt-2">
+              Upload successful!
+            </p>
+          )}
+
+          <Button 
+            onClick={handleAnalyze}
+            disabled={!isUploaded}
+            className="mt-4"
+          >
+            Analyze Statement
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-16">
           <div className="flex flex-col items-center gap-4">
