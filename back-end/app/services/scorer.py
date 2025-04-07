@@ -9,44 +9,64 @@ class ScoringService:
             print(f"[Scorer] {msg}")
 
     def calculate_score(self, llama_analysis: Dict) -> Dict:
-        """Calculate a simple score based on Llama's initial analysis"""
+        """Calculate a score based on heuristics from LLaMA's analysis summary"""
         try:
             text = llama_analysis.get('summary', '').lower()
-            score = 50  # Base score
+            base_score = 50
 
-            # Positive indicators (+10 each)
-            if "regular income" in text or "steady income" in text:
-                score += 10
-            if "savings" in text or "emergency fund" in text:
-                score += 10
-            if "positive cash flow" in text or "surplus" in text:
-                score += 10
-            if "low debt" in text or "no debt" in text:
-                score += 10
-            if "recommended" in text:
-                score += 10
+            POSITIVE_INDICATORS = {
+                "regular income": 15,
+                "steady income": 15,
+                "consistent": 10,
+                "recurring deposits": 10,
+                "positive": 15,
+                "surplus": 10,
+                "emergency fund": 10,
+                "savings": 10,
+                "low debt": 10,
+                "no debt": 15,
+                "recommended": 10,
+                "strong financials": 10,
+                "budgeting skills": 5,
+                "responsible spending": 5,
+            }
 
-            # Negative indicators (-15 each)
-            if "overdraft" in text:
-                score -= 15
-            if "irregular income" in text:
-                score -= 15
-            if "high debt" in text:
-                score -= 15
-            if "not recommended" in text:
-                score -= 15
-            if "risk" in text:
-                score -= 15
+            NEGATIVE_INDICATORS = {
+                "overdraft": -25,
+                "overdrawn": -20,
+                "irregular income": -15,
+                "irregular": -15,
+                "negative": -5,
+                "high debt": -20,
+                "debt burden": -15,
+                "not recommended": -20,
+                "risk": -10,
+                "unpredictable cash flow": -15,
+                "low balance": -10,
+                "no savings": -10,
+                "financial stress": -10,
+            }
 
-            # Ensure score stays within 0-100
+            # Apply scoring
+            score = base_score
+
+            for phrase, value in POSITIVE_INDICATORS.items():
+                if phrase in text:
+                    score += value
+
+            for phrase, value in NEGATIVE_INDICATORS.items():
+                if phrase in text:
+                    score += value  # value is negative
+
+            # Clamp score between 0–100
             final_score = max(0, min(100, score))
 
-            # Get decision based on score
+            # Decision logic
             if final_score >= 70:
                 decision = "APPROVED"
                 reason = "Strong financial profile"
             elif final_score >= 50:
-                decision = "MORE_INFORMATION_NEEDED"
+                decision = "MORE INFORMATION NEEDED"
                 reason = "Mixed indicators present"
             else:
                 decision = "DENIED"
@@ -56,7 +76,7 @@ class ScoringService:
                 "score": final_score,
                 "decision": decision,
                 "reason": reason,
-                "original_analysis": llama_analysis['summary']
+                "original_analysis": llama_analysis.get('summary', '')
             }
 
         except Exception as e:

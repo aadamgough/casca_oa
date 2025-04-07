@@ -39,7 +39,7 @@ Transaction Data:
 Please analyze:
 1. Income Stability: Identify regular income patterns and stability
 2. Spending Patterns: Evaluate major expenses and their nature (essential vs. discretionary)
-3. Cash Flow: Calculate average monthly inflow vs. outflow
+3. Cash Flow: Calculate average monthly inflow vs. outflow, or if ending balance is lower than starting balance
 4. Risk Factors: Flag any concerning patterns (more debits than credits, small ending balance, etc.)
 5. Business Indicators: Identify any business-related transactions
 

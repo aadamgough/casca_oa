@@ -14,7 +14,7 @@ interface ResultsProps {
 export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
     if (!isOpen || !results) return null;
 
-    // Add debug logs
+    // debug logs
     console.log('Results:', results);
     console.log('Summary type:', typeof results.summary);
     console.log('Summary value:', results.summary);
