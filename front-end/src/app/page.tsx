@@ -5,12 +5,28 @@ import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/file_upload"
 import Link from "next/link";
 import { useState } from "react";
+import { AnalysisLoading } from "@/components/analysis-loading";
+import { AnalysisModal } from "@/components/analysis-modal";
 
 export default function Home() {
   const [isUploaded, setIsUploaded] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<{
+    summary: string;
+    timestamp: string;
+  } | null>(null);
+  const [showResults, setShowResults] = useState(false);
 
+  const resetState = () => {
+    setIsUploaded(false);
+    setShowSuccess(false);
+    setUploadedFilename('');
+    setIsAnalyzing(false);
+    setAnalysisResults(null);
+    setShowResults(false);
+  };
 
   const handleFileSelect = async (file: File | null) => {
     setIsUploaded(false);
@@ -60,6 +76,9 @@ export default function Home() {
   const handleAnalyze = async () => { //TODO: Probably abstract this log in separate file
     if (!uploadedFilename) return;
 
+    setIsAnalyzing(true);
+    setShowResults(false);
+
     try {
       const response = await fetch(`http://localhost:8000/api/v1/analyze/analyze/${uploadedFilename}`, {
         method: 'POST',
@@ -72,9 +91,18 @@ export default function Home() {
       const data = await response.json();
       console.log('Analysis results:', data);
       // TODO: Handle the analysis results (show them in UI, etc.)
+      const summaryText = data.final_output.summary.choices?.[0]?.message?.content || 'No summary available';
+
+      setAnalysisResults({
+        summary: summaryText,
+        timestamp: data.final_output.timestamp
+      });
+      setShowResults(true);
+      setIsAnalyzing(false);
       
     } catch (error) {
       console.error('Error analyzing file:', error);
+      setIsAnalyzing(false);
     }
   }
 
@@ -160,6 +188,12 @@ export default function Home() {
           </div>
         </div>
       </main>
+      <AnalysisLoading isLoading={isAnalyzing} />
+      <AnalysisModal 
+        isOpen={showResults} 
+        onClose={resetState} 
+        results={analysisResults || { summary: '', timestamp: '' }}
+      />
     </div>
   );
 }

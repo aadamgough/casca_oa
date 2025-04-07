@@ -2,12 +2,15 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import Dict
 from ...services.preprocessor import PreprocessingService
 from ...services.textract_service import TextractService
+from ...services.llama_classifier import LlamaClassifier
+from ...services.scorer import ScoringService
 import os
 
 router = APIRouter()
 textract_service = TextractService()
 preprocessor = PreprocessingService()
-
+llama_classifier = LlamaClassifier()
+scorer = ScoringService()
 UPLOAD_DIR = "app/uploads"  # Create this directory in your backend
 
 @router.post("/upload")  #@router.post("/upload", response_model=List[Transaction])
@@ -66,12 +69,23 @@ async def analyze_statement(filename: str):
         # Process the results
         transactions = preprocessor.process_textract_blocks(textract_results)
         
+        # Get Llama analysis
+        initial_analysis = await llama_classifier.analyze_transactions(transactions)
+
+        # Get scoring and generate final prompt
+        scoring_result = scorer.calculate_score(initial_analysis)
+        
+        # Get the final output to the user
+        final_analysis = await llama_classifier.get_final_analysis(scoring_result)
+
         # Clean up the files
         os.remove(file_path)  # Remove local file
         
         return {
+            "textract_results": textract_results,
             "message": "Analysis completed for preprocessing",
-            "results": transactions
+            "results": transactions,
+            "final_output": final_analysis,
         }
         
     except Exception as e:

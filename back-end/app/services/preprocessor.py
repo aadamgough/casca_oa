@@ -6,47 +6,84 @@ from ..models.transaction import Transaction
 
 class PreprocessingService:
     def __init__(self):
-        self.common_prefixes = [
-            'POS', 'ACH', 'DEBIT', 'CREDIT', 'PMT', 'PAYMENT', 'TFR', 'TRANSFER',
-            'WDL', 'WITHDRAWAL', 'DEP', 'DEPOSIT', 'CHK', 'CHECK'
+        self.debug = True
+        
+    def log(self, message: str):
+        """Debug logging"""
+        if self.debug:
+            print(f"DEBUG: {message}")
+
+    def find_potential_header(self, blocks: List[Dict], current_block: Dict) -> str:
+        """Find potential header by looking at text above the current position"""
+        current_left = current_block['Geometry']['BoundingBox']['Left']
+        current_top = current_block['Geometry']['BoundingBox']['Top']
+        
+        potential_headers = []
+        for block in blocks:
+            if block['BlockType'] != 'LINE' or 'Text' not in block:
+                continue
+                
+            block_left = block['Geometry']['BoundingBox']['Left']
+            block_top = block['Geometry']['BoundingBox']['Top']
+            
+            # Check if block is above current line and in similar horizontal position
+            if (block_top < current_top and 
+                abs(block_left - current_left) < 0.1):  # Adjust threshold as needed
+                potential_headers.append(block['Text'])
+        
+        # Take the closest header above current position
+        return potential_headers[-1] if potential_headers else "UNKNOWN"
+
+    def process_textract_blocks(self, blocks: List[Dict]) -> List[Transaction]:
+        """Process Textract blocks into transactions"""
+        transactions = []
+        
+        # Get all LINE blocks
+        lines = [
+            block for block in blocks 
+            if block['BlockType'] == 'LINE' and 
+            'Text' in block and 
+            block['Text'].strip() and
+            len(block['Text'].strip()) > 3  # Skip very short lines
         ]
-
-    def clean_description(self, description: str) -> str:
-        """Normalize transaction descriptions"""
-        # Convert to uppercase for consistency
-        desc = description.upper()
         
-        # Remove common banking prefixes
-        for prefix in self.common_prefixes:
-            if desc.startswith(prefix):
-                desc = desc.replace(prefix, '', 1).strip()
+        self.log(f"Found {len(lines)} LINE blocks")
         
-        # Remove multiple spaces
-        desc = ' '.join(desc.split())
+        for line in lines:
+            text = line['Text'].strip()
+            
+            # Find potential header for this line based on geometry
+            potential_header = self.find_potential_header(blocks, line)
+            self.log(f"\nProcessing line: {text} (Potential header: {potential_header})")
+            
+            try:
+                transaction = Transaction(
+                    date=datetime.now(),           # Default current date
+                    description=text,              # Use full line as description
+                    amount=Decimal('0.00'),        # Default amount
+                    transaction_type="UNKNOWN",    # Required field
+                    category=potential_header,     # Use potential header as category
+                    status="UNVERIFIED",           # Default status
+                    balance_after=Decimal('0.00')  # Required field
+                )
+                
+                transactions.append(transaction)
+                self.log(f"Created transaction: {transaction}")
+                
+            except Exception as e:
+                self.log(f"Error creating transaction: {str(e)}")
+                continue
         
-        # Remove special characters but keep spaces and alphanumeric
-        desc = re.sub(r'[^A-Z0-9\s]', '', desc)
-        
-        return desc.strip()
-
-    def parse_amount(self, amount_str: str) -> Decimal:
-        """Convert amount string to Decimal"""
-        # Remove currency symbols and commas
-        clean_amount = amount_str.replace('$', '').replace(',', '')
-        
-        try:
-            return Decimal(clean_amount)
-        except:
-            raise ValueError(f"Could not parse amount: {amount_str}")
+        self.log(f"\nTotal transactions found: {len(transactions)}")
+        return transactions
 
     def parse_date(self, date_str: str) -> datetime:
-        """Convert date string to datetime"""
-        # Try common date formats
+        """Parse date string into datetime"""
         date_formats = [
-            '%m/%d/%Y',
-            '%Y-%m-%d',
-            '%d-%m-%Y',
-            '%m-%d-%Y'
+            '%m/%d/%Y', '%m-%d-%Y',
+            '%d/%m/%Y', '%d-%m-%Y',
+            '%m/%d/%y', '%m-%d-%y',
+            '%Y-%m-%d'  # ISO format
         ]
         
         for fmt in date_formats:
@@ -55,47 +92,28 @@ class PreprocessingService:
             except ValueError:
                 continue
         
-        raise ValueError(f"Could not parse date: {date_str}")
+        raise ValueError(f"Unable to parse date: {date_str}")
 
-    def process_textract_blocks(self, blocks: List[Dict]) -> List[Transaction]:
-        """Convert Textract blocks to Transaction objects"""
-        transactions = []
-        current_row = {}
+    def parse_amount(self, amount_str: str) -> Decimal:
+        """Parse amount string into Decimal"""
+        # Remove currency symbols, spaces, and commas
+        clean_amount = amount_str.replace('$', '').replace(',', '').replace(' ', '')
         
-        for block in blocks:
-            if block['BlockType'] == 'CELL':
-                row_index = block.get('RowIndex')
-                col_index = block.get('ColumnIndex')
-                
-                # Skip header row
-                if block.get('EntityTypes', []) == ['COLUMN_HEADER']:
-                    continue
-                
-                if 'Text' in block:
-                    text = block['Text'].strip()
-                    
-                    # Assuming standard format: Date | Description | Amount
-                    if col_index == 1:  # Date
-                        current_row = {'date': text}
-                    elif col_index == 2:  # Description
-                        current_row['description'] = text
-                    elif col_index == 3:  # Amount
-                        current_row['amount'] = text
-                        # Process complete row
-                        try:
-                            transactions.append(self.create_transaction(current_row))
-                        except Exception as e:
-                            print(f"Error processing row {current_row}: {e}")
+        # Handle negative amounts in parentheses
+        if '(' in clean_amount and ')' in clean_amount:
+            clean_amount = '-' + clean_amount.replace('(', '').replace(')', '')
         
-        return transactions
-
-    def create_transaction(self, row_data: Dict) -> Transaction:
-        """Create a Transaction object from row data"""
         try:
-            return Transaction(
-                date=self.parse_date(row_data['date']),
-                description=self.clean_description(row_data['description']),
-                amount=self.parse_amount(row_data['amount'])
-            )
-        except KeyError as e:
-            raise ValueError(f"Missing required field: {e}")
+            return Decimal(clean_amount)
+        except:
+            raise ValueError(f"Unable to parse amount: {amount_str}")
+
+    def clean_description(self, description: str) -> str:
+        """Clean and normalize description"""
+        # Convert to uppercase and remove extra spaces
+        desc = ' '.join(description.upper().split())
+        
+        # Remove special characters but keep spaces and basic punctuation
+        desc = re.sub(r'[^A-Z0-9\s\-\.]', '', desc)
+        
+        return desc.strip() or 'UNKNOWN'

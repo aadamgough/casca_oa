@@ -14,13 +14,13 @@ class TextractService:
             'textract',
             aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
+            region_name=os.getenv('AWS_REGION', 'us-east-2')
         )
         self.s3 = boto3.client(
             's3',
             aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
+            region_name=os.getenv('AWS_REGION', 'us-east-2')
         )
         self.bucket_name = os.getenv('AWS_S3_BUCKET')
 
@@ -36,7 +36,7 @@ class TextractService:
             head = self.s3.head_object(Bucket=self.bucket_name, Key=file_name)
             print(f"File uploaded. Content-Length: {head['ContentLength']}")
             print(f"Uploaded to: s3://{self.bucket_name}/{file_name}")
-            
+
             # Start Textract job
             response = self.textract.start_document_analysis(
                 DocumentLocation={
