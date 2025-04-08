@@ -121,7 +121,7 @@ Keep the analysis concise and data-driven."""
             Please provide:
             1. A clear, 2-3 sentence final recommendation
             2. The most important factors that led to this decision
-            3. If more information is needed, specify exactly what would be most helpful"""
+            3. If more information is needed, specify exactly what would be most helpful. KEEP THIS SHORT AND TO THE POINT"""
             self.log("Getting final analysis from Llama")
             
             # Prepare the API request

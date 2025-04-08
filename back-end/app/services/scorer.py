@@ -17,9 +17,9 @@ class ScoringService:
             POSITIVE_INDICATORS = {
                 "regular income": 15,
                 "steady income": 15,
-                "consistent": 10,
+                "consistent paycheck": 10,
                 "recurring deposits": 10,
-                "positive": 15,
+                "positive cash flow": 15,
                 "surplus": 10,
                 "emergency fund": 10,
                 "savings": 10,
@@ -35,33 +35,35 @@ class ScoringService:
                 "overdraft": -25,
                 "overdrawn": -20,
                 "irregular income": -15,
-                "irregular": -15,
-                "negative": -5,
                 "high debt": -20,
                 "debt burden": -15,
                 "not recommended": -20,
                 "risk": -10,
+                "debit": -15,
                 "unpredictable cash flow": -15,
                 "low balance": -10,
                 "no savings": -10,
                 "financial stress": -10,
             }
 
-            # Apply scoring
             score = base_score
+            positive_matches = {}
+            negative_matches = {}
 
             for phrase, value in POSITIVE_INDICATORS.items():
-                if phrase in text:
-                    score += value
+                count = text.count(phrase)
+                if count > 0:
+                    score += value * count
+                    positive_matches[phrase] = {"count": count, "weight": value}
 
             for phrase, value in NEGATIVE_INDICATORS.items():
-                if phrase in text:
-                    score += value  # value is negative
+                count = text.count(phrase)
+                if count > 0:
+                    score += value * count  # value is negative
+                    negative_matches[phrase] = {"count": count, "weight": value}
 
-            # Clamp score between 0–100
             final_score = max(0, min(100, score))
 
-            # Decision logic
             if final_score >= 70:
                 decision = "APPROVED"
                 reason = "Strong financial profile"
@@ -76,6 +78,10 @@ class ScoringService:
                 "score": final_score,
                 "decision": decision,
                 "reason": reason,
+                "match_details": {
+                    "positive_indicators": positive_matches,
+                    "negative_indicators": negative_matches
+                },
                 "original_analysis": llama_analysis.get('summary', '')
             }
 

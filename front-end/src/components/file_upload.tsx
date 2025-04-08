@@ -1,89 +1,107 @@
 "use client"
 
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 interface FileUploadProps {
-  onFileSelect?: (file: File | null) => void;
+  onFileSelect: (file: File | null) => void;
 }
 
 export function FileUpload({ onFileSelect }: FileUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setSelectedFile(file);
-      onFileSelect?.(file);
-    } else {
-      alert('Please select a PDF file');
-    }
-    // Reset the input value to allow selecting the same file again
-    if (event.target.value) event.target.value = '';
-  };
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        onFileSelect(acceptedFiles[0]);
+      }
+      setIsDragging(false); // move this here for consistent cleanup
+    },
+    [onFileSelect]
+  );
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const removeFile = () => {
-    setSelectedFile(null);
-    onFileSelect?.(null);
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+    },
+    maxFiles: 1,
+    multiple: false,
+    onDragEnter: () => setIsDragging(true),
+    onDragLeave: () => setIsDragging(false),
+    onDragOver: () => setIsDragging(true),
+  });
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Hidden file input */}
-      <input
-        type="file"
-        accept=".pdf"
-        className="hidden"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-      />
-
-      {/* File preview */}
-      {selectedFile && (
-        <div className="flex items-center gap-2 bg-secondary/50 px-4 py-2 rounded-lg">
-          <div className="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5 text-primary"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-              />
-            </svg>
-            <span className="text-sm font-medium">{selectedFile.name}</span>
-          </div>
-          <button
-            onClick={removeFile}
-            className="p-1 hover:bg-secondary rounded-full transition-colors"
+    <div
+      {...getRootProps()}
+      className={`
+        border-2 border-dashed rounded-lg p-12
+        transition-all duration-200 ease-in-out
+        cursor-pointer text-center
+        ${isDragActive 
+          ? 'border-primary bg-primary/5 scale-102' 
+          : 'border-gray-300 hover:border-primary'
+        }
+      `}
+    >
+      <input {...getInputProps() as any} />
+      <div className="flex flex-col items-center gap-4">
+        <div className={`
+          p-4 rounded-full bg-primary/10
+          transition-transform duration-200
+          ${isDragActive ? 'scale-110' : ''}
+        `}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`
+              h-8 w-8
+              transition-colors duration-200
+              ${isDragActive ? 'text-primary' : 'text-gray-400'}
+            `}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
         </div>
-      )}
 
-      {/* Upload button */}
-      <Button 
-        size="lg" 
-        className="w-full sm:w-auto"
-        onClick={handleUploadClick}
-      >
-        {selectedFile ? 'Change Statement' : 'Upload Bank Statement'}
-      </Button>
-      <p className="text-sm text-muted-foreground">
-        Supported formats: PDF
-      </p>
+        <div className="space-y-2">
+          <p className="text-lg font-medium">
+            {isDragActive 
+              ? "Drop your file here" 
+              : "Drag & drop your bank statement"
+            }
+          </p>
+          <p className="text-sm text-muted-foreground">
+            or click to browse
+          </p>
+        </div>
+
+        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>Supports PDF files only</span>
+        </div>
+      </div>
     </div>
   );
 }

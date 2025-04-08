@@ -5,21 +5,22 @@ import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/file_upload"
 import Link from "next/link";
 import { useState } from "react";
+import { UploadModal } from "@/components/upload-modal";
 import { AnalysisLoading } from "@/components/analysis-loading";
 import { AnalysisModal } from "@/components/analysis-modal";
+import { AnalysisResults } from "@/types/analysis";
 
 export default function Home() {
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState<{
-    summary: string;
-    timestamp: string;
-  } | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const [showResults, setShowResults] = useState(false);
 
   const resetState = () => {
+    setShowUploadModal(false);
     setIsUploaded(false);
     setShowSuccess(false);
     setUploadedFilename('');
@@ -73,7 +74,7 @@ export default function Home() {
     }
   }
 
-  const handleAnalyze = async () => { //TODO: Probably abstract this log in separate file
+  const handleAnalyze = async () => {
     if (!uploadedFilename) return;
 
     setIsAnalyzing(true);
@@ -90,19 +91,36 @@ export default function Home() {
   
       const data = await response.json();
       console.log('Analysis results:', data);
-      // TODO: Handle the analysis results (show them in UI, etc.)
-      const summaryText = data.final_output.summary.choices?.[0]?.message?.content || 'No summary available';
-
+      
+      // Update to handle new response structure
       setAnalysisResults({
-        summary: summaryText,
-        timestamp: data.final_output.timestamp
+        summary: {
+          overall_score: data.final_output.summary.overall_score,
+          health_status: data.final_output.summary.health_status,
+          key_findings: data.final_output.summary.key_findings
+        },
+        detailed_analysis: {
+          components: data.final_output.detailed_analysis.components,
+          narrative: data.final_output.detailed_analysis.narrative
+        },
+        recommendations: {
+          immediate_actions: data.final_output.recommendations.immediate_actions,
+          flags: data.final_output.recommendations.flags
+        },
+        metrics: {
+          cash_flow: data.final_output.metrics.cash_flow,
+          expense_breakdown: data.final_output.metrics.expense_breakdown,
+          debt_and_savings: data.final_output.metrics.debt_and_savings
+        }
       });
+      
       setShowResults(true);
       setIsAnalyzing(false);
       
     } catch (error) {
       console.error('Error analyzing file:', error);
       setIsAnalyzing(false);
+      // Optionally add error handling UI feedback here
     }
   }
 
@@ -112,8 +130,8 @@ export default function Home() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Steezy</h1>
         <Link href="/whats-this">
-          <Button variant="ghost" size="sm">
-            What's this button?
+          <Button variant="ghost" size="sm"> {/* TODO: Route to the support email (support@casca.ai or whatever) */}
+            Contact Us
           </Button>
         </Link>
       </header>
@@ -131,23 +149,13 @@ export default function Home() {
           in seconds. Make smarter lending decisions with confidence.
         </p>
 
-        <div className="flex flex-col items-center gap-4">
-          <FileUpload onFileSelect={handleFileSelect} />
-          
-          {showSuccess && (
-            <p className="text-green-600 font-medium mt-2">
-              Upload successful!
-            </p>
-          )}
-
-          <Button 
-            onClick={handleAnalyze}
-            disabled={!isUploaded}
-            className="mt-4"
-          >
-            Analyze Statement
-          </Button>
-        </div>
+        <Button 
+          onClick={() => setShowUploadModal(true)}
+          size="lg"
+          className="text-lg px-8 py-6"
+        >
+          Upload Bank Statement
+        </Button>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-16">
           <div className="flex flex-col items-center gap-4">
@@ -186,14 +194,24 @@ export default function Home() {
               Save time on analysis and focus on making strategic lending decisions.
             </p>
           </div>
-        </div>
+        </div> {/*TODO: Add footer with casa information*/}
       </main>
-      <AnalysisLoading isLoading={isAnalyzing} />
-      <AnalysisModal 
-        isOpen={showResults} 
-        onClose={resetState} 
-        results={analysisResults || { summary: '', timestamp: '' }}
+      <UploadModal 
+        isOpen={showUploadModal}
+        onClose={resetState}
+        onFileSelect={handleFileSelect}
+        onAnalyze={handleAnalyze}
+        isUploaded={isUploaded}
+        isAnalyzing={isAnalyzing}
       />
+      <AnalysisLoading isLoading={isAnalyzing} />
+      {analysisResults && (
+        <AnalysisModal 
+          isOpen={showResults} 
+          onClose={resetState} 
+          results={analysisResults}
+        />
+      )}
     </div>
   );
 }
