@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { AnalysisResults } from "@/types/analysis";
+import { useState } from "react";
 
 interface ResultsProps {
     isOpen: boolean;
@@ -10,14 +11,14 @@ interface ResultsProps {
 }
 
 export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
+    const [showScoreInfo, setShowScoreInfo] = useState(false);
     if (!isOpen || !results) return null;
 
     const getDecisionColor = (decision: string) => {
         switch (decision) {
-            case 'Excellent: Loan Approved': return "text-green-500";
-            case 'Good: Loan Approved': return "text-green-500";
-            case 'Fair: Further information needed': return "text-yellow-500";
-            case 'Concering: Loan Denied': return "text-red-500";
+            case 'Loan Approved': return "text-green-500";
+            case 'Further information needed': return "text-yellow-500";
+            case 'Loan Denied': return "text-red-500";
             default: return "text-gray-500";
         }
     };
@@ -41,12 +42,40 @@ export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                    <Button 
+                        onClick={() => setShowScoreInfo(true)}
+                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded"
+                    >
+                        What is the loan score?
+                    </Button>
                 </div>
+
+                {/* Score Info Modal */}
+                {showScoreInfo && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+                        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-4">
+                            <h3 className="text-lg font-semibold mb-2">Understanding the Loan Score</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                The loan score (0-100) evaluates creditworthiness based on cash flow, income stability, 
+                                expense management, and overall financial health. Scores above 75 typically indicate 
+                                loan approval, while lower scores may require additional review.
+                            </p>
+                            <Button 
+                                onClick={() => setShowScoreInfo(false)}
+                                className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded"
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Overall Score */}
                 <div className="text-center mb-8">
-                    <div className={`text-5xl font-bold ${getSeverityColor(results.summary.overall_score.toString())}`}>
-                        Loan Score: {results.summary.overall_score}
+                    <div className="text-5xl font-bold">
+                        Loan Score: <span className={getDecisionColor(results.summary.health_status)}>
+                            {results.summary.overall_score}
+                        </span>
                     </div>
                     <div className="text-xl mt-2">{results.summary.health_status}</div>
                 </div>
@@ -56,19 +85,25 @@ export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
                     <h3 className="text-lg font-semibold mb-2">Key Findings</h3>
                 </div>
 
-                {/* Component Scores */}
+                {/* Component Scores with Summaries */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {Object.entries(results.detailed_analysis.components).map(([key, component]) => (
-                    <div key={key} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                            <h4 className="font-semibold capitalize">{key.replace('_', ' ')}</h4>
-                            <span className={getDecisionColor(component.status)}>  {/* Use component.status instead of score */}
-                                {component.score}
-                            </span>
+                    {Object.entries(results.detailed_analysis.components).map(([key, component]) => (
+                        <div key={key} className="p-4 border rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-semibold capitalize">{key.replace('_', ' ')}</h4>
+                                <span className={getDecisionColor(component.status)}>
+                                    {component.score}
+                                </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{component.summary}</p>
+                            {/* Display component-specific details */}
+                            {component.details && (
+                                <div className="mt-2 text-sm">
+                                    {key === 'cash_flow'}
+                                </div>
+                            )}
                         </div>
-                        <p className="text-sm text-muted-foreground">{component.summary}</p>
-                    </div>
-                ))}
+                    ))}
                 </div>
 
                 {/* Flags and Recommendations */}
@@ -85,28 +120,32 @@ export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
 
                 {/* Metrics */}
                 <h3 className="text-lg font-semibold mb-2">Metrics</h3>
+                {/* Metrics Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold mb-2">Cash Flow</h4>
+                        <h4 className="font-semibold mb-2">Cash Flow & Income</h4>
                         <div className="space-y-1 text-sm">
-                            <p>Credit Utilization: {results.metrics.debt_and_savings.credit_utilization}</p>
-                            <p>Outstanding Debt: ${results.metrics.debt_and_savings.outstanding_debt}</p>
-                            {/* Display financial indicators */}
-                            <div className="mt-2">
-                                <p className="font-medium">Key Indicators:</p>
-                                {results.metrics.debt_and_savings.financial_indicators.map((indicator, index) => (
-                                    <p key={index} className="ml-2">
-                                        • {indicator.category}: {indicator.impact}
-                                    </p>
-                                ))}
-                            </div>
+                            <p>Net Monthly Flow: ${results.metrics.cash_flow.net_monthly_flow}</p>
+                            <p>Income: ${results.metrics.cash_flow.income}</p>
+                            <p>Expenses: ${results.metrics.cash_flow.expenses}</p>
+                            <p>Beginning Balance: ${results.metrics.cash_flow.beginning_balance}</p>
+                            <p>Ending Balance: ${results.metrics.cash_flow.ending_balance}</p>
+                            <p>Regular Income Sources: {results.metrics.income_sources.regular}</p>
+                            <p>Irregular Income Sources: {results.metrics.income_sources.irregular}</p>
                         </div>
                     </div>
                     <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold mb-2">Debt & Savings</h4>
+                        <h4 className="font-semibold mb-2">Debt & Financial Health</h4>
                         <div className="space-y-1 text-sm">
                             <p>Credit Utilization: {results.metrics.debt_and_savings.credit_utilization}</p>
-                            <p>Outstanding Debt: ${results.metrics.debt_and_savings.outstanding_debt}</p>
+                                {Array.isArray(results.metrics.debt_and_savings.outstanding_debt) && 
+                                    results.metrics.debt_and_savings.outstanding_debt.map((debt, index) => (
+                                        <p key={index}>Outstanding Debt: ${debt.amount} - {debt.description}</p>
+                                    ))
+                                }`
+                            {results.metrics.debt_and_savings.financial_indicators.map((indicator, index) => (
+                                <p key={index} className="ml-2">• {indicator.category}: {indicator.impact}</p>
+                            ))}
                         </div>
                     </div>
                 </div>

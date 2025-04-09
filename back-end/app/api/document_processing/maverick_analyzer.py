@@ -47,11 +47,11 @@ class MaverickAnalyzer:
             raise Exception(f"Analysis failed: {str(e)}")
 
 
-    def _build_analysis_prompt(self, document_content: str) -> str:
+    def _build_analysis_prompt(self, document_content: str) -> str: # TODO: get rid of llm score generation and use sub-heuristics for calculation individual buckets
         """
         Build a prompt for Maverick to analyze the statement data
         """
-        return f"""As a financial analyst, analyze this bank statement data and provide a structured analysis with scores (0-100) for each section. Focus on:
+        return f"""As a financial analyst, analyze this bank statement data and provide a structured analysis for each section. The summary in each sectiondoesn't need to be very short, but it should be concise. Focus on:
 
     1. Cash Flow Analysis:
     - Total inflows and outflows
@@ -59,7 +59,7 @@ class MaverickAnalyzer:
     - Overall cash flow health
 
     2. Expense Analysis:
-    - Major expenses (over $500)
+    - Major expenses (over 75% of starting or ending balance)
     - Recurring expenses
     - Expense categories breakdown
 
@@ -86,12 +86,11 @@ class MaverickAnalyzer:
     Please provide your analysis in exactly this JSON structure:
 
     {{
-        "Cash Flow Analysis": {{
+        "Cash Flow Analysis": {{ 
             "total_inflows": <float>,
             "total_outflows": <float>,
             "beginning_balance": <float>,
             "ending_balance": <float>,
-            "cash_flow_health_score": <float>,
             "summary": <string>
         }},
         "Expense Analysis": {{
@@ -107,7 +106,6 @@ class MaverickAnalyzer:
                     "amount": <float>
                 }}
             ],
-            "expense_analysis_score": <float>,
             "summary": <string>
         }},
         "Income Analysis": {{
@@ -123,7 +121,6 @@ class MaverickAnalyzer:
                     "amount": <float>
                 }}
             ],
-            "income_stability_score": <float>,
             "summary": <string>
         }},
         "Debt and Credit": {{
@@ -134,11 +131,9 @@ class MaverickAnalyzer:
                 }}
             ],
             "credit_utilization": <string>,
-            "debt_and_credit_score": <float>,
             "summary": <string>
         }},
         "Financial Health Indicators": {{
-            "financial_health_score": <float>,
             "key_indicators": [
                 {{
                     "category": <string>,
@@ -150,7 +145,7 @@ class MaverickAnalyzer:
         }}
     }}
 
-    Note: All scores should be between 0-100, and ensure all fields are populated with appropriate values."""
+    Note: Ensure all fields are populated with appropriate indicators and keywords or phrases that relate to the statement data are in the summary to indicate positive or negative aspects."""
 
     def _structure_analysis(self, maverick_response: str) -> Dict[str, Any]:
         """
@@ -252,35 +247,32 @@ class MaverickAnalyzer:
         """Build structured analysis from parsed JSON"""
         return {
             "cash_flow": {
-                "score": self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "cash_flow_health_score")),
                 "total_inflow": self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "total_inflows")),
                 "total_outflow": self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "total_outflows")),
                 "net_flow": (
                     self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "total_inflows")) -
                     self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "total_outflows"))
                 ),
+                "beginning_balance": self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "beginning_balance")),
+                "ending_balance": self._safe_float(self._safe_get(analysis, "Cash Flow Analysis", "ending_balance")),
                 "summary": str(self._safe_get(analysis, "Cash Flow Analysis", "summary", default=""))
             },
             "expenses": {
-                "score": self._safe_float(self._safe_get(analysis, "Expense Analysis", "expense_analysis_score")),
                 "major_expenses": self._safe_get(analysis, "Expense Analysis", "major_expenses", default=[]),
                 "recurring_expenses": self._safe_get(analysis, "Expense Analysis", "recurring_expenses", default=[]),
                 "summary": str(self._safe_get(analysis, "Expense Analysis", "summary", default=""))
             },
             "income": {
-                "score": self._safe_float(self._safe_get(analysis, "Income Analysis", "income_stability_score")),
                 "regular_sources": self._safe_get(analysis, "Income Analysis", "regular_income_sources", default=[]),
                 "irregular_sources": self._safe_get(analysis, "Income Analysis", "additional_irregular_income", default=[]),
                 "summary": str(self._safe_get(analysis, "Income Analysis", "summary", default=""))
             },
             "debt_credit": {
-                "score": self._safe_float(self._safe_get(analysis, "Debt and Credit", "debt_and_credit_score")),
                 "outstanding_debt": self._safe_get(analysis, "Debt and Credit", "outstanding_debt_payments", default=[]),
                 "credit_utilization": str(self._safe_get(analysis, "Debt and Credit", "credit_utilization", default="")),
                 "summary": str(self._safe_get(analysis, "Debt and Credit", "summary", default=""))
             },
             "financial_health": {
-                "score": self._safe_float(self._safe_get(analysis, "Financial Health Indicators", "financial_health_score")),
                 "key_indicators": self._safe_get(analysis, "Financial Health Indicators", "key_indicators", default=[]),
                 "summary": str(self._safe_get(analysis, "Financial Health Indicators", "summary", default=""))
             }
@@ -289,9 +281,9 @@ class MaverickAnalyzer:
     def _get_fallback_structure(self) -> Dict[str, Any]:
         """Return fallback structure for failed analysis"""
         return {
-            "cash_flow": {"score": 50, "total_inflow": 50, "total_outflow": 50, "net_flow": 0, "summary": "Analysis failed"},
-            "expenses": {"score": 50, "major_expenses": [], "recurring_expenses": [], "summary": "Analysis failed"},
-            "income": {"score": 50, "regular_sources": [], "irregular_sources": [], "summary": "Analysis failed"},
-            "debt_credit": {"score": 50, "outstanding_debt": [], "credit_utilization": "N/A", "summary": "Analysis failed"},
-            "financial_health": {"score": 50, "key_indicators": [], "summary": "Analysis failed"}
+            "cash_flow": {"total_inflow": 50, "total_outflow": 50, "net_flow": 0, "summary": "Analysis failed"},
+            "expenses": {"major_expenses": [], "recurring_expenses": [], "summary": "Analysis failed"},
+            "income": {"regular_sources": [], "irregular_sources": [], "summary": "Analysis failed"},
+            "debt_credit": {"outstanding_debt": [], "credit_utilization": "N/A", "summary": "Analysis failed"},
+            "financial_health": {"key_indicators": [], "summary": "Analysis failed"}
         }

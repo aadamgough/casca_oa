@@ -5,10 +5,10 @@ class OutputGenerator:
     def __init__(self):
         self.llama_client = LlamaClient()
         self.score_descriptions = {
-            "excellent": (90, 100, "Excellent: Loan Approved"),
-            "good": (75, 89, "Good: Loan Approved"),
-            "fair": (60, 74, "Fair: Further information needed"),
-            "concerning": (0, 59, "Concering: Loan Denied")
+            "excellent": (90, 100, "Loan Approved"),
+            "good": (75, 89, "Loan Approved"),
+            "fair": (60, 74, "Further information needed"),
+            "concerning": (0, 59, "Loan Denied")
         }
 
     async def generate_output(
@@ -24,54 +24,23 @@ class OutputGenerator:
                 context = self._prepare_context(maverick_analysis, scoring_result)
                 narrative = await self._generate_narrative(context)
                 
-                # Get summary text (from any key containing 'summary')
-                summary_text = ""
-                summary_key = next((key for key in narrative.keys() 
-                                if 'summary' in key.lower()), None)
-                if summary_key and isinstance(narrative[summary_key], dict):
-                    summary_dict = narrative[summary_key]
-                    if len(summary_dict) >= 2:
-                        summary_text = list(summary_dict.values())[1]
-                
-                # Find analysis component (from any key containing 'analysis')
-                analysis_key = next((key for key in narrative.keys() 
-                                if 'analysis' in key.lower()), None)
-                analysis_content = narrative.get(analysis_key, {}) if analysis_key else {}
-                
-                # Find recommendations (from any key containing 'recommend')
-                recommendations_key = next((key for key in narrative.keys() 
-                                        if 'recommend' in key.lower()), None)
-                recommendations = narrative.get(recommendations_key, []) if recommendations_key else []
-                
-                # Find metrics (from any key containing 'metric')
-                metrics_key = next((key for key in scoring_result.keys() 
-                                if 'metric' in key.lower()), None)
-                metrics = scoring_result.get(metrics_key, {}) if metrics_key else {}
-                
-                # Find scores (from any key containing 'score')
-                scores_key = next((key for key in scoring_result.keys() 
-                                if 'score' in key.lower() and 'component' in key.lower()), None)
-                scores = scoring_result.get(scores_key, {}) if scores_key else {}
-                
                 return {
                     "summary": {
                         "overall_score": scoring_result.get("final_score", 50),
                         "health_status": self._get_health_status(scoring_result.get("final_score", 50)),
-                        "key_findings": str(summary_text)
+                        "key_findings": narrative["summary"]["key_findings"],
                     },
                     "detailed_analysis": {
                         "components": self._format_component_analysis(
-                            scores,
-                            maverick_analysis
+                            scoring_result["component_scores"],
+                            narrative["component_analysis"]
                         ),
-                        "narrative": analysis_content
+                            "narrative": narrative["component_analysis"]
                     },
                     "recommendations": {
-                        "immediate_actions": recommendations,
                         "flags": scoring_result.get("flags", [])
                     },
-                    "metrics": self._format_metrics(metrics),
-                    "raw_scores": scores
+                    "metrics": self._format_metrics(scoring_result["metrics"])
                 }
                     
             except Exception as e:
@@ -86,7 +55,42 @@ class OutputGenerator:
         """
         Prepare context for LLM narrative generation
         """
-        return f"""Analyze this financial data and provide insights:
+        return f"""Analyze this financial data and provide insights in the following JSON format:
+    Required JSON Format:
+    {{
+        "summary": {{
+            "overall_health": "Brief 2-3 sentence overview of financial health",
+            "key_findings": ["List of 3-4 key findings"]
+        }},
+        "component_analysis": {{
+            "cash_flow": {{
+                "summary": "Detailed analysis including starting balance (${maverick_analysis['cash_flow']['beginning_balance']}) and ending balance (${maverick_analysis['cash_flow']['ending_balance']}). Must mention if balances < $500. Include specific numbers.",
+                "strengths": ["List of strengths"],
+                "concerns": ["List of concerns"]
+            }},
+            "debt_credit": {{
+                "summary": "Analysis including credit utilization ({scoring_result['metrics']['debt_metrics']['credit_utilization']}), total debt amount, and comparison to healthy ranges. Explain score of {scoring_result['component_scores']['debt_credit']}",
+                "strengths": ["List of strengths"],
+                "concerns": ["List of concerns"]
+            }},
+            "expenses": {{
+                "summary": "Analysis of expense patterns and ratios",
+                "strengths": ["List of strengths"],
+                "concerns": ["List of concerns"]
+            }},
+            "income": {{
+                "summary": "Analysis of income stability and sources",
+                "strengths": ["List of strengths"],
+                "concerns": ["List of concerns"]
+            }},
+            "financial_health": {{
+                "summary": "Overall financial health indicators analysis",
+                "strengths": ["List of strengths"],
+                "concerns": ["List of concerns"]
+            }}
+        }},
+        "recommendations": {{
+    }}
 
 Overall Score: {scoring_result['final_score']}
 
@@ -99,10 +103,39 @@ Key Metrics:
 Flags:
 {self._format_flags_for_prompt(scoring_result['flags'])}
 
-Provide a structured JSON response with:
-1. A brief summary of overall financial health
-2. Detailed analysis of each component
-3. Specific, actionable recommendations based on the flags and metrics
+Here are some additional details for context in the summary part of each component:
+Cash Flow:
+    - Explicitly mention starting balance and ending balance from ${maverick_analysis['cash_flow']['beginning_balance']} and ${maverick_analysis['cash_flow']['ending_balance']}
+    - If balances are below $500, highlight this as a critical concern
+    - Compare inflow vs outflow and discuss the trend
+    - Include specific numbers to support the analysis
+
+Debt Credit:
+    - Include the credit utilization percentage
+    - Specify the total outstanding debt amount
+    - Compare these numbers to typical healthy ranges
+    - Explain why the score is high or low based on these metrics
+
+Expenses:
+    - Mention total number of major expenses (${scoring_result['metrics']['expense_metrics']['major_expenses_count']})
+    - Discuss recurring expenses pattern (${scoring_result['metrics']['expense_metrics']['recurring_expenses_count']})
+    - Compare expense ratios to income
+    - Highlight any unusual spending patterns or large expenses
+    - Include specific numbers and percentages
+
+Income:
+    - Analyze regular income sources (${scoring_result['metrics']['income_stability']['regular_sources']})
+    - Discuss irregular income patterns (${scoring_result['metrics']['income_stability']['irregular_sources']})
+    - Comment on income stability and diversity
+    - Include specific income amounts and frequency
+    - Compare income levels to expenses and debt obligations
+
+Financial Health:
+    - Evaluate overall financial indicators (${scoring_result['metrics']['financial_health_indicators']['key_findings']})
+    - Discuss debt-to-income ratios
+    - Analyze savings patterns and emergency fund status
+    - Comment on overall financial management
+    - Include specific metrics and comparisons to industry standards
 """
 
     async def _generate_narrative(self, context: str) -> Dict[str, Any]:
@@ -144,20 +177,22 @@ Provide a structured JSON response with:
     def _format_component_analysis(
         self,
         component_scores: Dict[str, float],
-        maverick_analysis: Dict[str, Any]
+        component_analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Format detailed component analysis
+        Format detailed component analysis using Maverick's summaries and our refined scores
         """
         formatted_analysis = {}
         for component, score in component_scores.items():
             formatted_analysis[component] = {
                 "score": score,
                 "status": self._get_health_status(score),
-                "summary": maverick_analysis[component]["summary"],
+                "summary": component_analysis[component]["summary"],
+                "strengths": component_analysis[component]["strengths"],
+                "concerns": component_analysis[component]["concerns"],
                 "details": self._extract_component_details(
                     component,
-                    maverick_analysis[component]
+                    component_analysis[component]
                 )
             }
         return formatted_analysis
@@ -174,7 +209,9 @@ Provide a structured JSON response with:
             return {
                 "net_flow": analysis.get("net_flow", 0),
                 "total_inflow": analysis.get("total_inflow", 0),
-                "total_outflow": analysis.get("total_outflow", 0)
+                "total_outflow": analysis.get("total_outflow", 0),
+                "beginning_balance": analysis.get("beginning_balance", 0),
+                "ending_balance": analysis.get("ending_balance", 0)
             }
         elif component == "expenses":
             return {
@@ -185,23 +222,15 @@ Provide a structured JSON response with:
         return {}
 
     def _format_metrics(self, metrics: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Format metrics for display
-        """
+        """Format metrics for display"""
         try:
-            # Handle credit utilization
-            credit_util = metrics["debt_metrics"]["credit_utilization"]
-            credit_util_str = (
-                f"{float(credit_util)*100}%" 
-                if isinstance(credit_util, (int, float)) 
-                else str(credit_util)
-            )
-            
             return {
                 "cash_flow": {
                     "net_monthly_flow": metrics["cash_flow_summary"]["net_flow"],
                     "income": metrics["cash_flow_summary"]["total_inflow"],
-                    "expenses": metrics["cash_flow_summary"]["total_outflow"]
+                    "expenses": metrics["cash_flow_summary"]["total_outflow"],
+                    "beginning_balance": metrics["cash_flow_summary"]["beginning_balance"],
+                    "ending_balance": metrics["cash_flow_summary"]["ending_balance"]
                 },
                 "expense_breakdown": {
                     "major_expenses": metrics["expense_metrics"]["major_expenses_count"],
@@ -212,7 +241,7 @@ Provide a structured JSON response with:
                     "irregular": metrics["income_stability"]["irregular_sources"]
                 },
                 "debt_and_savings": {
-                    "credit_utilization": credit_util_str,
+                    "credit_utilization": metrics["debt_metrics"]["credit_utilization"],
                     "outstanding_debt": metrics["debt_metrics"]["outstanding_debt"],
                     "financial_indicators": metrics["financial_health_indicators"]["key_findings"]
                 }

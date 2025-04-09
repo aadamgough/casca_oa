@@ -28,6 +28,8 @@ export interface AnalysisResults {
             net_monthly_flow: number;
             income: number;
             expenses: number;
+            beginning_balance: number;
+            ending_balance: number;
         };
         expense_breakdown: {
             major_expenses: number;

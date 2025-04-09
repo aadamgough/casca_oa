@@ -41,9 +41,10 @@ export function UploadModal({
         
         <FileUpload onFileSelect={onFileSelect} />
         
+        {/* TODO: add visual of what file was uploaded like before */}
         {isUploaded && (
           <div className="mt-6 flex flex-col items-center gap-4">
-            <p className="text-green-600 font-medium">
+            <p className="text-green-600 font-medium"> 
               File uploaded successfully!
             </p>
             <Button 

@@ -1,13 +1,14 @@
 from typing import Dict, Any, List, Tuple
+from .bucket_score_service import BucketScoreService
 
 class ScoringLlamaService:
     def __init__(self):
         # Weights for different components in final score
         self.weights = {
-            "cash_flow": 0.25,
+            "cash_flow": 0.45,
             "expenses": 0.20,
             "income": 0.25,
-            "debt_credit": 0.15,
+            "debt_credit": 0.1,
             "financial_health": 0.15
         }
 
@@ -19,6 +20,8 @@ class ScoringLlamaService:
             "large_expense_ratio": 0.40  # Large expenses vs income ratio
         }
 
+        self.bucket_score_service = BucketScoreService()
+
     def calculate_score(self, maverick_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
         Calculate final score and generate insights from Maverick analysis
@@ -26,33 +29,28 @@ class ScoringLlamaService:
         try:
             print("Starting score calculation with analysis:", maverick_analysis)
             
-            # Calculate weighted score
-            final_score = self._calculate_weighted_score(maverick_analysis)
-            print(f"Calculated final score: {final_score}")
+            # Get component scores from bucket service
+            component_scores = self.bucket_score_service.calculate_bucket_scores(maverick_analysis)
+            
+            # Calculate weighted score using bucket service scores
+            final_score = sum(
+                score * self.weights[component]
+                for component, score in component_scores.items()
+            )
             
             # Generate flags
-            flags = self._generate_flags(maverick_analysis)
-            print(f"Generated flags: {flags}")
+            flags = self._generate_flags(maverick_analysis, component_scores)
             
             # Extract key metrics
             metrics = self._extract_key_metrics(maverick_analysis)
-            print(f"Extracted metrics: {metrics}")
             
-            result = {
-                "final_score": final_score,
-                "component_scores": {
-                    "cash_flow": maverick_analysis["cash_flow"]["score"],
-                    "expenses": maverick_analysis["expenses"]["score"],
-                    "income": maverick_analysis["income"]["score"],
-                    "debt_credit": maverick_analysis["debt_credit"]["score"],
-                    "financial_health": maverick_analysis["financial_health"]["score"]
-                },
+            return {
+                "final_score": round(final_score, 2),
+                "component_scores": component_scores,
                 "flags": flags,
                 "metrics": metrics
             }
-            print(f"Final scoring result: {result}")
-            return result
-            
+                
         except Exception as e:
             print(f"Error in calculate_score: {str(e)}")
             raise Exception(f"Scoring calculation failed: {str(e)}")
@@ -69,17 +67,14 @@ class ScoringLlamaService:
         
         return round(weighted_sum, 2)
 
-    def _generate_flags(self, analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _generate_flags(self, analysis: Dict[str, Any], component_scores: Dict[str, float]) -> List[Dict[str, Any]]:
         """
         Generate warning flags based on analysis
         """
         flags = []
-        print("Generating flags for analysis:", analysis)
 
-        # Check component scores
-        for component, data in analysis.items():
-            score = float(data.get("score", 0))  # Convert to float
-            print(f"Checking {component} score: {score}")
+        # Check component scores from bucket service
+        for component, score in component_scores.items():
             if score < self.thresholds["low_score"]:
                 flags.append({
                     "type": f"low_{component}_score",
@@ -138,7 +133,9 @@ class ScoringLlamaService:
                 "cash_flow_summary": {
                     "net_flow": float(analysis["cash_flow"]["net_flow"]),
                     "total_inflow": float(analysis["cash_flow"]["total_inflow"]),
-                    "total_outflow": float(analysis["cash_flow"]["total_outflow"])
+                    "total_outflow": float(analysis["cash_flow"]["total_outflow"]),
+                    "beginning_balance": float(analysis["cash_flow"]["beginning_balance"]),
+                    "ending_balance": float(analysis["cash_flow"]["ending_balance"])
                 },
                 "expense_metrics": {
                     "major_expenses_count": len(analysis["expenses"]["major_expenses"]),
