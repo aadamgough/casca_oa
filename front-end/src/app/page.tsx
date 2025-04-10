@@ -44,6 +44,8 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
+      console.log(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/analyze/upload`)
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/analyze/upload`, {
         method: 'POST',
         headers: {

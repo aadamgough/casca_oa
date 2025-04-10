@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import analyze  # Updated import path
-
+import os
 
 app = FastAPI(
     title="Bank Statement Analyzer",
@@ -13,6 +13,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
+    f"https://{os.getenv('NEXT_PUBLIC_API_URL')}"
 ]
 
 # Configure CORS
