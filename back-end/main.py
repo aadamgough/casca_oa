@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api.routes import analyze  # Note the dot
+from app.api.routes import analyze  # Updated import path
+
 
 app = FastAPI(
     title="Bank Statement Analyzer",
