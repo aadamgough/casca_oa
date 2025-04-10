@@ -3,12 +3,14 @@ from typing import Dict, Any, List
 import re
 from dotenv import load_dotenv
 import os
+
+
 class DocumentParser:
     def __init__(self, api_key: str):
         load_dotenv()
-        api_key = os.getenv('LLAMA_PARSE_API_KEY')
+        api_key = os.getenv('LLAMA_CLOUD_API_KEY')
         if not api_key:
-            raise ValueError("LLAMA_PARSE_API_KEY environment variable is not set")
+            raise ValueError("LLAMA_CLOUD_API_KEY environment variable is not set")
 
         self.parser = LlamaParse(
             api_key=api_key,
