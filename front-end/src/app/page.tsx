@@ -32,8 +32,10 @@ export default function Home() {
   const handleFileSelect = async (file: File | null) => {
     setIsUploaded(false);
     setShowSuccess(false);
+    setUploadedFilename('');
+
     if (!file) {
-      console.error('No file selected');
+      
       return;
     }
 
@@ -121,7 +123,6 @@ export default function Home() {
     } catch (error) {
       console.error('Error analyzing file:', error);
       setIsAnalyzing(false);
-      // Optionally add error handling UI feedback here
     }
   }
 
@@ -150,7 +151,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Steezy</h1>
+        <h1 className="text-2xl font-bold">Steezar</h1>
         <Link href="https://www.cascading.ai/contact" target="_blank">
           <Button variant="ghost" size="sm"> 
             Contact Us
@@ -225,6 +226,7 @@ export default function Home() {
         onAnalyze={handleAnalyze}
         isUploaded={isUploaded}
         isAnalyzing={isAnalyzing}
+        uploadedFilename={uploadedFilename}
       />
       <AnalysisLoading isLoading={isAnalyzing} />
       {analysisResults && (

@@ -40,8 +40,8 @@ export interface AnalysisResults {
             irregular: number;
         };
         debt_and_savings: {
-            credit_utilization: string;
-            outstanding_debt: number;
+            recurring_debt_payments: string;
+            inferred_liability_types: string;
             financial_indicators: Array<{
                 category: string;
                 observation: string;

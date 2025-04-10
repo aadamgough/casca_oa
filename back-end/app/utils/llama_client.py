@@ -67,7 +67,7 @@ class LlamaClient:
             # Ensure all required fields are present
             required_sections = [
                 "cash_flow", "expenses", "income", 
-                "debt_credit", "financial_health"
+                "debt_credit"
             ]
             
             for section in required_sections:

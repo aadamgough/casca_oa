@@ -9,7 +9,6 @@ class BucketScoreService:
             "expenses": BucketScoreService.score_expenses(maverick_analysis["expenses"]),
             "income": BucketScoreService.score_income(maverick_analysis["income"]),
             "debt_credit": BucketScoreService.score_debt_credit(maverick_analysis["debt_credit"]),
-            "financial_health": BucketScoreService.score_financial_health(maverick_analysis["financial_health"])
         }
 
     @staticmethod
@@ -116,7 +115,7 @@ class BucketScoreService:
         total = major_total + recurring_total
 
         if total == 0:
-            numerical_score = 50
+            numerical_score = 60
         elif len(major) > 3 and len(recurring) > 8:
             numerical_score = 45  # Too many expenses
         elif major_total > recurring_total * 2:
@@ -159,7 +158,7 @@ class BucketScoreService:
         return round(min(100, max(0, numerical_score * 0.7 + text_score * 0.3)))
 
     @staticmethod
-    def score_income(data: Dict[str, Any]) -> float:
+    def score_income(data: Dict[str, Any]) -> float: #income risk / revenue risk --> weigh this more
         """Score income based on stability, diversity, and summary analysis"""
         # Numerical analysis (65% of score)
         regular = data.get("regular_sources", [])
@@ -173,8 +172,6 @@ class BucketScoreService:
             numerical_score = 90  # Multiple stable sources
         elif len(regular) == 1 and irregular_total < 0.3 * regular_total:
             numerical_score = 80  # Single stable source
-        elif irregular_total > regular_total:
-            numerical_score = 50  # Mostly irregular
         else:
             numerical_score = 65  # Mixed sources
 
@@ -212,23 +209,38 @@ class BucketScoreService:
 
     @staticmethod
     def score_debt_credit(data: Dict[str, Any]) -> float:
-        """Score debt and credit based on utilization, amounts, and summary analysis"""
+        """Score debt based on payment patterns and types of liabilities"""
         # Numerical analysis (75% of score)
-        try:
-            utilization = float(data.get("credit_utilization", "0%").strip('%')) / 100
-        except (ValueError, TypeError):
-            utilization = 0.0
-
-        if utilization > 0.7:
-            numerical_score = 30
-        elif utilization > 0.5:
-            numerical_score = 45
-        elif utilization > 0.3:
-            numerical_score = 60
-        elif utilization > 0.1:
-            numerical_score = 75
+        recurring_payments = data.get("recurring_debt_payments", [])
+        liability_types = data.get("inferred_liability_types", [])
+        
+        # Calculate total monthly debt payments
+        total_debt_payments = sum(payment["amount"] for payment in recurring_payments)
+        
+        # Initialize base numerical score
+        numerical_score = 65  # Default neutral score
+        
+        # Scoring based on number and types of debt
+        num_liabilities = len(liability_types)
+        
+        if num_liabilities == 0:
+            numerical_score = 85  # No detected debt obligations
+        elif num_liabilities > 4:
+            numerical_score = 45  # Many different types of debt
         else:
-            numerical_score = 85
+            # Adjust score based on types of debt
+            has_mortgage = any("mortgage" in liability.lower() for liability in liability_types)
+            has_auto = any("auto" in liability.lower() for liability in liability_types)
+            
+            # Positive adjustments for "good" debt
+            if has_mortgage:
+                numerical_score += 5  # Mortgage is generally considered good debt
+            if has_auto and num_liabilities <= 2:
+                numerical_score += 3  # Auto loan alone or with one other debt is okay
+                
+            
+            # Cap the score
+            numerical_score = min(90, max(30, numerical_score))
 
         # Summary text analysis (25% of score)
         summary = data.get("summary", "").lower()
@@ -236,19 +248,21 @@ class BucketScoreService:
         
         positive_keywords = {
             'manageable': 4,
-            'low utilization': 5,
+            'consistent payments': 5,
             'paying off': 4,
             'decreasing': 3,
             'minimal': 4,
-            'good standing': 5
+            'good standing': 5,
+            'on time': 5
         }
         
         negative_keywords = {
-            'high balance': -4,
+            'high payments': -4,
             'missed payment': -5,
-            'increasing': -3,
-            'maxed out': -5,
-            'overleveraged': -4
+            'late payment': -4,
+            'increasing debt': -3,
+            'multiple loans': -3,
+            'concerning pattern': -4
         }
 
         score_adjustment = sum(weight for word, weight in positive_keywords.items() if word in summary) + \
@@ -256,68 +270,7 @@ class BucketScoreService:
         
         text_score = max(20, min(100, text_score + score_adjustment * 2))
         
-        return round(min(100, max(0, numerical_score * 0.75 + text_score * 0.25)))
-    
-    @staticmethod
-    def score_financial_health(data: Dict[str, Any]) -> float:
-        """Score financial health based on key indicators and summary analysis"""
-        # Numerical analysis (70% of score)
-        indicators = data.get("key_indicators", [])
+        # Final weighted score (75% numerical, 25% text analysis)
+        final_score = round(min(100, max(0, numerical_score * 0.75 + text_score * 0.25)))
         
-        positive_count = sum(1 for i in indicators if i["impact"].lower() == "positive")
-        negative_count = sum(1 for i in indicators if i["impact"].lower() == "negative")
-        savings_count = sum(1 for i in indicators if "saving" in i["category"].lower())
-        
-        # Calculate ratio of positive to total indicators
-        total_indicators = len(indicators) if indicators else 1
-        positive_ratio = positive_count / total_indicators
-
-        # Calculate numerical score
-        if negative_count > positive_count * 2:
-            numerical_score = 40  # Significantly more negatives
-        elif negative_count > positive_count:
-            numerical_score = 55  # More negatives than positives
-        elif savings_count >= 2 and positive_ratio > 0.6:
-            numerical_score = 90  # Multiple savings indicators and mostly positive
-        elif positive_ratio > 0.7:
-            numerical_score = 85  # Strongly positive indicators
-        elif positive_ratio > 0.5:
-            numerical_score = 75  # More positive than negative
-        else:
-            numerical_score = 65  # Balanced indicators
-
-        # Summary text analysis (30% of score)
-        summary = data.get("summary", "").lower()
-        text_score = 65
-
-        positive_keywords = {
-            'improving': 4,
-            'stable': 3,
-            'strong': 4,
-            'savings': 5,
-            'responsible': 4,
-            'disciplined': 4,
-            'well-managed': 5,
-            'emergency fund': 5
-        }
-        
-        negative_keywords = {
-            'struggling': -4,
-            'concerning': -3,
-            'unstable': -4,
-            'risky': -4,
-            'vulnerable': -3,
-            'no savings': -5,
-            'overextended': -5,
-            'deteriorating': -4
-        }
-
-        score_adjustment = sum(weight for word, weight in positive_keywords.items() if word in summary) + \
-                        sum(weight for word, weight in negative_keywords.items() if word in summary)
-        
-        text_score = max(20, min(100, text_score + score_adjustment * 2))
-        
-        # Combine scores (70% numerical, 30% text analysis)
-        final_score = (numerical_score * 0.7) + (text_score * 0.3)
-        
-        return round(min(100, max(0, final_score)))
+        return final_score

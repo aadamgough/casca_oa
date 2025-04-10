@@ -5,17 +5,16 @@ class ScoringLlamaService:
     def __init__(self):
         # Weights for different components in final score
         self.weights = {
-            "cash_flow": 0.45,
-            "expenses": 0.20,
-            "income": 0.25,
+            "cash_flow": 0.4,
+            "expenses": 0.2,
+            "income": 0.3,
             "debt_credit": 0.1,
-            "financial_health": 0.15
         }
 
         # Thresholds for flag generation
         self.thresholds = {
             "low_score": 60,  # Score below this raises concerns
-            "high_credit_utilization": 0.30,  # Credit utilization above 30%
+            "high_inferred_liability_types": 0.30,  # Credit utilization above 30%
             "negative_cash_flow": 0,  # Negative cash flow threshold
             "large_expense_ratio": 0.40  # Large expenses vs income ratio
         }
@@ -46,7 +45,7 @@ class ScoringLlamaService:
             
             return {
                 "final_score": round(final_score, 2),
-                "component_scores": component_scores,
+                "component_scores": {k: float(v) for k, v in component_scores.items()},  # Ensure all scores are floats
                 "flags": flags,
                 "metrics": metrics
             }
@@ -96,21 +95,21 @@ class ScoringLlamaService:
             print(f"Error converting net_flow: {e}")
 
         # Check credit utilization - handle string or numeric values
-        credit_util = analysis["debt_credit"]["credit_utilization"]
-        print(f"Raw credit utilization value: {credit_util}")
+        inferred_liability_types = analysis["debt_credit"]["inferred_liability_types"]
+        print(f"Raw inferred liability types value: {inferred_liability_types}")
         
         # Only process if it's a numeric value
-        if isinstance(credit_util, (int, float)):
-            credit_util_float = float(credit_util)
-            print(f"Checking credit utilization: {credit_util_float}")
-            if credit_util_float > self.thresholds["high_credit_utilization"]:
+        if isinstance(inferred_liability_types, (int, float)):
+            inferred_liability_types_float = float(inferred_liability_types)
+            print(f"Checking inferred liability types: {inferred_liability_types_float}")
+            if inferred_liability_types_float > self.thresholds["high_inferred_liability_types"]:
                 flags.append({
-                    "type": "high_credit_utilization",
+                    "type": "high_inferred_liability_types",
                     "severity": "high",
-                    "message": f"High credit utilization at {credit_util_float*100:.1f}%"
+                    "message": f"High inferred liability types at {inferred_liability_types_float*100:.1f}%"
                 })
         else:
-            print(f"Credit utilization is not numeric: {credit_util}")
+            print(f"Inferred liability types is not numeric: {inferred_liability_types}")
 
         # Check expense patterns
         major_expenses = analysis["expenses"]["major_expenses"]
@@ -146,18 +145,8 @@ class ScoringLlamaService:
                     "irregular_sources": len(analysis["income"]["irregular_sources"])
                 },
                 "debt_metrics": {
-                    "outstanding_debt": analysis["debt_credit"]["outstanding_debt"],
-                    "credit_utilization": analysis["debt_credit"]["credit_utilization"]
-                },
-                "financial_health_indicators": {
-                    "indicators_count": len(analysis["financial_health"]["key_indicators"]),
-                    "key_findings": [
-                        {
-                            "category": indicator["category"],
-                            "impact": indicator["impact"]
-                        }
-                        for indicator in analysis["financial_health"]["key_indicators"]
-                    ]
+                    "recurring_debt_payments": analysis["debt_credit"]["recurring_debt_payments"],
+                    "inferred_liability_types": analysis["debt_credit"]["inferred_liability_types"]
                 }
             }
         except Exception as e:

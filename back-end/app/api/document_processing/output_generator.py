@@ -6,8 +6,8 @@ class OutputGenerator:
         self.llama_client = LlamaClient()
         self.score_descriptions = {
             "excellent": (90, 100, "Loan Approved"),
-            "good": (75, 89, "Loan Approved"),
-            "fair": (60, 74, "Further information needed"),
+            "good": (72, 89, "Loan Approved"),
+            "fair": (60, 71, "Further information needed"),
             "concerning": (0, 59, "Loan Denied")
         }
 
@@ -69,7 +69,7 @@ class OutputGenerator:
                 "concerns": ["List of concerns"]
             }},
             "debt_credit": {{
-                "summary": "Analysis including credit utilization ({scoring_result['metrics']['debt_metrics']['credit_utilization']}), total debt amount, and comparison to healthy ranges. Explain score of {scoring_result['component_scores']['debt_credit']}",
+                "summary": "Analysis including inferred liability types ({scoring_result['metrics']['debt_metrics']['inferred_liability_types']}), total recurring debt payments, and comparison to healthy ranges. Explain score of {scoring_result['component_scores']['debt_credit']}",
                 "strengths": ["List of strengths"],
                 "concerns": ["List of concerns"]
             }},
@@ -83,13 +83,10 @@ class OutputGenerator:
                 "strengths": ["List of strengths"],
                 "concerns": ["List of concerns"]
             }},
-            "financial_health": {{
-                "summary": "Overall financial health indicators analysis",
-                "strengths": ["List of strengths"],
-                "concerns": ["List of concerns"]
-            }}
         }},
         "recommendations": {{
+            "flags": ["List of flags"]
+        }}
     }}
 
 Overall Score: {scoring_result['final_score']}
@@ -111,8 +108,7 @@ Cash Flow:
     - Include specific numbers to support the analysis
 
 Debt Credit:
-    - Include the credit utilization percentage
-    - Specify the total outstanding debt amount
+    - Include the inferred liability types
     - Compare these numbers to typical healthy ranges
     - Explain why the score is high or low based on these metrics
 
@@ -129,13 +125,6 @@ Income:
     - Comment on income stability and diversity
     - Include specific income amounts and frequency
     - Compare income levels to expenses and debt obligations
-
-Financial Health:
-    - Evaluate overall financial indicators (${scoring_result['metrics']['financial_health_indicators']['key_findings']})
-    - Discuss debt-to-income ratios
-    - Analyze savings patterns and emergency fund status
-    - Comment on overall financial management
-    - Include specific metrics and comparisons to industry standards
 """
 
     async def _generate_narrative(self, context: str) -> Dict[str, Any]:
@@ -241,10 +230,8 @@ Financial Health:
                     "irregular": metrics["income_stability"]["irregular_sources"]
                 },
                 "debt_and_savings": {
-                    "credit_utilization": metrics["debt_metrics"]["credit_utilization"],
-                    "outstanding_debt": metrics["debt_metrics"]["outstanding_debt"],
-                    "financial_indicators": metrics["financial_health_indicators"]["key_findings"]
-                }
+                    "inferred_liability_types": metrics["debt_metrics"]["inferred_liability_types"],
+                    "recurring_debt_payments": metrics["debt_metrics"]["recurring_debt_payments"],                }
             }
         except Exception as e:
             print(f"Error formatting metrics: {e}")

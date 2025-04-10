@@ -57,7 +57,7 @@ export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
                             <h3 className="text-lg font-semibold mb-2">Understanding the Loan Score</h3>
                             <p className="text-sm text-gray-600 mb-4">
                                 The loan score (0-100) evaluates creditworthiness based on cash flow, income stability, 
-                                expense management, and overall financial health. Scores above 75 typically indicate 
+                                expense management, and debt management. Scores above 75 typically indicate 
                                 loan approval, while lower scores may require additional review.
                             </p>
                             <Button 
@@ -135,19 +135,25 @@ export function AnalysisModal({ isOpen, onClose, results }: ResultsProps) {
                         </div>
                     </div>
                     <div className="p-4 border rounded-lg">
-                        <h4 className="font-semibold mb-2">Debt & Financial Health</h4>
-                        <div className="space-y-1 text-sm">
-                            <p>Credit Utilization: {results.metrics.debt_and_savings.credit_utilization}</p>
-                                {Array.isArray(results.metrics.debt_and_savings.outstanding_debt) && 
-                                    results.metrics.debt_and_savings.outstanding_debt.map((debt, index) => (
-                                        <p key={index}>Outstanding Debt: ${debt.amount} - {debt.description}</p>
-                                    ))
-                                }`
-                            {results.metrics.debt_and_savings.financial_indicators.map((indicator, index) => (
-                                <p key={index} className="ml-2">• {indicator.category}: {indicator.impact}</p>
-                            ))}
-                        </div>
+                    <h4 className="font-semibold mb-2">Debt & Financial Health</h4>
+                    <div className="space-y-1 text-sm">
+                        <p>Inferred Liability Types: {Array.isArray(results.metrics.debt_and_savings.inferred_liability_types) 
+                            ? results.metrics.debt_and_savings.inferred_liability_types.join(", ") 
+                            : "None"}
+                        </p>
+                        <p>Recurring Debt Payments:</p>
+                        <ul className="list-disc pl-4">
+                            {Array.isArray(results.metrics.debt_and_savings.recurring_debt_payments) 
+                                ? results.metrics.debt_and_savings.recurring_debt_payments.map((payment, index) => (
+                                    <li key={index}>
+                                        {payment.description}: ${payment.amount}
+                                    </li>
+                                ))
+                                : <li>None</li>
+                            }
+                        </ul>
                     </div>
+                </div>
                 </div>
             </div>
         </div>

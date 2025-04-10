@@ -59,7 +59,7 @@ class MaverickAnalyzer:
     - Overall cash flow health
 
     2. Expense Analysis:
-    - Major expenses (over 75% of starting or ending balance)
+    - Major expenses, usually categoerized as "out" or "debit" (over 75% of starting or ending balance)
     - Recurring expenses
     - Expense categories breakdown
 
@@ -69,16 +69,9 @@ class MaverickAnalyzer:
     - Income stability
 
     4. Debt and Credit:
-    - Outstanding debt payments
-    - Credit utilization
+    - Recurring debt payments, refrence inferred liability types as described below to build this list
+    - Inferred liability types, look for bank names, auto, mortgage, etc. in description or transaction name
     - Payment patterns
-
-    5. Financial Health Indicators:
-    Provide a comprehensive assessment of overall financial health, considering any relevant factors such as:
-    - Financial stability and trends
-    - Risk factors
-    - Areas of strength or concern
-    - Any other relevant financial health indicators
 
     Statement Data:
     {document_content}
@@ -124,23 +117,13 @@ class MaverickAnalyzer:
             "summary": <string>
         }},
         "Debt and Credit": {{
-            "outstanding_debt_payments": [
+            "recurring_debt_payments": [
                 {{
                     "description": <string>,
                     "amount": <float>
                 }}
             ],
-            "credit_utilization": <string>,
-            "summary": <string>
-        }},
-        "Financial Health Indicators": {{
-            "key_indicators": [
-                {{
-                    "category": <string>,
-                    "observation": <string>,
-                    "impact": <string>
-                }}
-            ],
+            "inferred_liability_types": <string>,
             "summary": <string>
         }}
     }}
@@ -268,13 +251,9 @@ class MaverickAnalyzer:
                 "summary": str(self._safe_get(analysis, "Income Analysis", "summary", default=""))
             },
             "debt_credit": {
-                "outstanding_debt": self._safe_get(analysis, "Debt and Credit", "outstanding_debt_payments", default=[]),
-                "credit_utilization": str(self._safe_get(analysis, "Debt and Credit", "credit_utilization", default="")),
+                "recurring_debt_payments": self._safe_get(analysis, "Debt and Credit", "recurring_debt_payments", default=[]),
+                "inferred_liability_types": str(self._safe_get(analysis, "Debt and Credit", "inferred_liability_types", default="")),
                 "summary": str(self._safe_get(analysis, "Debt and Credit", "summary", default=""))
-            },
-            "financial_health": {
-                "key_indicators": self._safe_get(analysis, "Financial Health Indicators", "key_indicators", default=[]),
-                "summary": str(self._safe_get(analysis, "Financial Health Indicators", "summary", default=""))
             }
         }
 
@@ -284,6 +263,5 @@ class MaverickAnalyzer:
             "cash_flow": {"total_inflow": 50, "total_outflow": 50, "net_flow": 0, "summary": "Analysis failed"},
             "expenses": {"major_expenses": [], "recurring_expenses": [], "summary": "Analysis failed"},
             "income": {"regular_sources": [], "irregular_sources": [], "summary": "Analysis failed"},
-            "debt_credit": {"outstanding_debt": [], "credit_utilization": "N/A", "summary": "Analysis failed"},
-            "financial_health": {"key_indicators": [], "summary": "Analysis failed"}
+            "debt_credit": {"recurring_debt_payments": [], "inferred_liability_types": "N/A", "summary": "Analysis failed"},
         }

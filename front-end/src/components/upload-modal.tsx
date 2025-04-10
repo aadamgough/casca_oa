@@ -10,6 +10,7 @@ interface UploadModalProps {
   onAnalyze: () => void;
   isUploaded: boolean;
   isAnalyzing: boolean;
+  uploadedFilename?: string;
 }
 
 export function UploadModal({
@@ -18,7 +19,8 @@ export function UploadModal({
   onFileSelect,
   onAnalyze,
   isUploaded,
-  isAnalyzing
+  isAnalyzing,
+  uploadedFilename
 }: UploadModalProps) {
   if (!isOpen) return null;
 
@@ -39,22 +41,41 @@ export function UploadModal({
           </button>
         </div>
         
-        <FileUpload onFileSelect={onFileSelect} />
-        
-        {/* TODO: add visual of what file was uploaded like before */}
-        {isUploaded && (
-          <div className="mt-6 flex flex-col items-center gap-4">
-            <p className="text-green-600 font-medium"> 
-              File uploaded successfully!
-            </p>
-            <Button 
-              onClick={() => {
-                onAnalyze();
-              }}
-              className="w-full"
-            >
-              Analyze Statement
-            </Button>
+        {!isUploaded ? (
+          <FileUpload onFileSelect={onFileSelect} />
+        ) : (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="font-medium truncate max-w-[200px]">
+                  {uploadedFilename}
+                </span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => onFileSelect(null)}
+                disabled={isAnalyzing}
+              >
+                Change File
+              </Button>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-green-600 font-medium">
+                File uploaded successfully!
+              </p>
+              <Button 
+                onClick={onAnalyze}
+                className="w-full"
+                disabled={isAnalyzing}
+              >
+                Analyze Statement
+              </Button>
+            </div>
           </div>
         )}
       </div>
