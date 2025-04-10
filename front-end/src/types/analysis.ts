@@ -10,7 +10,7 @@ export interface AnalysisResults {
                 score: number;
                 status: string;
                 summary: string;
-                details: any;
+                details: string;
             };
         };
         narrative: string;

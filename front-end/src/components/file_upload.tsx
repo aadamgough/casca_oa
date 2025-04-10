@@ -8,14 +8,12 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ onFileSelect }: FileUploadProps) {
-  const [isDragging, setIsDragging] = useState(false);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
         onFileSelect(acceptedFiles[0]);
       }
-      setIsDragging(false); // move this here for consistent cleanup
     },
     [onFileSelect]
   );
@@ -27,9 +25,6 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
     },
     maxFiles: 1,
     multiple: false,
-    onDragEnter: () => setIsDragging(true),
-    onDragLeave: () => setIsDragging(false),
-    onDragOver: () => setIsDragging(true),
   });
 
   return (
@@ -45,7 +40,7 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
         }
       `}
     >
-      <input {...getInputProps() as any} />
+      <input {...getInputProps()} />
       <div className="flex flex-col items-center gap-4">
         <div className={`
           p-4 rounded-full bg-primary/10

@@ -1,8 +1,6 @@
 "use client"
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/file_upload"
 import Link from "next/link";
 import { useState } from "react";
 import { UploadModal } from "@/components/upload-modal";
@@ -13,7 +11,6 @@ import { AnalysisResults } from "@/types/analysis";
 export default function Home() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
@@ -22,7 +19,6 @@ export default function Home() {
   const resetState = () => {
     setShowUploadModal(false);
     setIsUploaded(false);
-    setShowSuccess(false);
     setUploadedFilename('');
     setIsAnalyzing(false);
     setAnalysisResults(null);
@@ -31,7 +27,6 @@ export default function Home() {
 
   const handleFileSelect = async (file: File | null) => {
     setIsUploaded(false);
-    setShowSuccess(false);
     setUploadedFilename('');
 
     if (!file) {
@@ -64,7 +59,6 @@ export default function Home() {
       const data = await response.json();
       console.log('Upload successful:', data);
       setIsUploaded(true);
-      setShowSuccess(true);
       setUploadedFilename(data.filename);
       
       // TODO: Add success notification or redirect to results page
@@ -72,7 +66,6 @@ export default function Home() {
     } catch (error) {
       console.error('Error uploading file:', error);
       setIsUploaded(false);
-      setShowSuccess(false);
     }
   }
 
