@@ -8,7 +8,6 @@ import os
 class DocumentParser:
     def __init__(self, api_key: str):
         load_dotenv()
-        print("Available environment variables:", [k for k in os.environ.keys()])
 
         api_key = os.getenv('LLAMA_CLOUD_API_KEY')
         if not api_key:

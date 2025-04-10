@@ -44,7 +44,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/v1/analyze/upload', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/analyze/upload`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -76,7 +76,7 @@ export default function Home() {
     setShowResults(false);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/analyze/analyze/${uploadedFilename}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/analyze/analyze/${uploadedFilename}`, {
         method: 'POST',
       });
   
