@@ -14,7 +14,7 @@ origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     f"{os.getenv('NEXT_PUBLIC_API_URL')}"
-    "https://casca-oa-ten.vercel.app",  # Add your Vercel domain
+    "https://casca-oa-ten.vercel.app", 
     "https://casca-oa-ten.vercel.app/", 
 ]
 
