@@ -146,7 +146,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Steezar</h1>
+        <h1 className="text-2xl font-bold">Flux</h1>
         <Link href="https://www.cascading.ai/contact" target="_blank">
           <Button variant="ghost" size="sm"> 
             Contact Us
